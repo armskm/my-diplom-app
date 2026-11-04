@@ -18,7 +18,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # --- 1. Сборка и пуш в Docker Hub ---
       - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
@@ -34,7 +33,6 @@ jobs:
             ${{ env.IMAGE_NAME }}:${{ github.sha }}
             ${{ env.IMAGE_NAME }}:latest
 
-      # --- 2. Деплой в Kubernetes ---
       - name: Deploy to Kubernetes
         run: |
           git clone https://github.com/armskm/devops-diplom-yandexcloud.git
