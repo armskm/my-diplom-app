@@ -1,0 +1,50 @@
+name: Build and Deploy App
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  IMAGE_NAME: armskm/my-diplom-app
+  DEPLOYMENT_NAME: my-diplom-app
+  CONTAINER_NAME: app
+
+jobs:
+  build-and-deploy:
+    # Укажите здесь метку вашего self-hosted раннера
+    runs-on: deb12
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # --- 1. Сборка и пуш в Docker Hub ---
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.IMAGE_NAME }}:${{ github.sha }}
+            ${{ env.IMAGE_NAME }}:latest
+
+      # --- 2. Деплой в Kubernetes ---
+      - name: Deploy to Kubernetes
+        run: |
+          git clone https://github.com/armskm/devops-diplom-yandexcloud.git
+          cd devops-diplom-yandexcloud/app
+          # Применяем манифест (на случай, если деплоймента еще нет или изменились другие настройки)
+          kubectl apply -f deployment.yaml
+          
+          # Принудительно обновляем образ на свежесобранный (по хешу коммита)
+          kubectl set image deployment/${{ env.DEPLOYMENT_NAME }} ${{ env.CONTAINER_NAME }}=${{ env.IMAGE_NAME }}:${{ github.sha }}
+          
+          # Ждем, пока Kubernetes проверит и запустит новые поды
+          kubectl rollout status deployment/${{ env.DEPLOYMENT_NAME }} --timeout=120s
