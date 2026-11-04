@@ -33,13 +33,18 @@ jobs:
             ${{ env.IMAGE_NAME }}:${{ github.sha }}
             ${{ env.IMAGE_NAME }}:latest
 
+      - name: Checkout infra repo
+        uses: actions/checkout@v4
+        with:
+          repository: armskm/devops-diplom-yandexcloud
+          path: infra-repo
+
       - name: Deploy to Kubernetes
         run: |
-          git clone https://github.com/armskm/devops-diplom-yandexcloud.git
-          cd devops-diplom-yandexcloud/app
-          kubectl apply -f deployment.yaml
+          # Применяем манифест из скачанной папки
+          kubectl apply -f infra-repo/app/deployment.yaml
           
-          # Принудительно обновляем образ на свежесобранный (по хешу коммита)
+          # Обновляем образ на свежесобранный (по хешу коммита)
           kubectl set image deployment/${{ env.DEPLOYMENT_NAME }} ${{ env.CONTAINER_NAME }}=${{ env.IMAGE_NAME }}:${{ github.sha }}
           
           # Ждем, пока Kubernetes проверит и запустит новые поды
